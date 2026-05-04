@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Sistema PDV - Mini Mercado</title>
+    
+    <script>
+        if (sessionStorage.getItem('estaLogado') !== 'true') {
+            window.location.href = 'login.html';
+        }
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root { --primary: #2c3e50; --success: #27ae60; --danger: #e74c3c; --accent: #3498db; --text: #ecf0f1; --warning: #f39c12; }
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; background: #f4f7f6; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        nav { background: var(--primary); display: flex; padding: 0 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); justify-content: space-between; align-items: center; }
+        .nav-group { display: flex; }
+        nav button { background: none; border: none; color: var(--text); padding: 15px 20px; cursor: pointer; font-size: 16px; border-bottom: 3px solid transparent; }
+        nav button.active { border-bottom: 3px solid var(--accent); font-weight: bold; }
+        .btn-sair { background: var(--danger) !important; height: 35px; line-height: 10px; margin-left: 10px; border-radius: 4px; border-bottom: none !important; font-weight: bold; }
+        .container { flex: 1; padding: 20px; overflow-y: auto; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #eee; }
+        input, select { padding: 10px; border: 1px solid #ddd; border-radius: 4px; margin: 5px 0; }
+        .btn { padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .btn-success { background: var(--success); color: white; }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-warning { background: var(--warning); color: white; }
+        .btn-sm { padding: 5px 10px; font-size: 12px; }
+
+        /* Estilo do Cupom */
+        #cupom-impressao { display: none; }
+
+        @media print {
+            body * { visibility: hidden; }
+            #cupom-impressao, #cupom-impressao * { visibility: visible; display: block !important; }
+            #cupom-impressao { 
+                position: absolute; left: 0; top: 0; width: 72mm; 
+                font-family: 'Courier New', Courier, monospace; 
+                font-size: 11px; color: black; 
+                white-space: pre; padding: 2mm; margin: 0; 
+            }
+            .no-print { display: none !important; }
+            @page { margin: 0; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="no-print">
+    <div class="nav-group">
+        <button class="nav-link active" onclick="openTab('vendas')">🛒 PDV</button>
+        <button class="nav-link" onclick="openTab('estoque')">📦 Estoque</button>
+        <button class="nav-link" onclick="openTab('dashboard')">📊 Dashboard</button>
+    </div>
+    
+    <div style="display: flex; align-items: center; gap: 15px;">
+        <span id="info-usuario" style="color: var(--text); font-size: 14px; opacity: 0.9; font-weight: bold;"></span>
+        <button onclick="openTab('config')" style="background: none; border: none; color: white; cursor: pointer; font-size: 18px;" title="Configurações">⚙️</button>
+        <button class="btn-sair" onclick="sair()">🚪 SAIR</button>
+    </div>
+</nav>
+
+<div id="cupom-impressao"></div>
+
+<div class="container no-print">
+    <div id="vendas" class="tab-content active">
+        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px;">
+            <div class="card">
+                <h2>Frente de Caixa</h2>
+                <input type="text" id="pdv-busca" style="width: 95%; font-size: 20px;" placeholder="Bipe o código..." autofocus>
+                <table>
+                    <thead><tr><th>Produto</th><th>Qtd</th><th>Preço</th><th>Total</th><th>Ação</th></tr></thead>
+                    <tbody id="pdv-lista"></tbody>
+                </table>
+            </div>
+            <div class="card" style="text-align: center;">
+                <h3>Total</h3>
+                <h1 style="font-size: 50px; color: var(--success);">R$ <span id="pdv-total">0,00</span></h1>
+                <p>Pagamento:</p>
+                <select id="pdv-pagamento" style="width: 100%; font-size: 18px;" onchange="verificarDinheiro()">
+                    <option value="Dinheiro">F1 - Dinheiro</option>
+                    <option value="Pix">F2 - Pix</option>
+                    <option value="Débito">F3 - Débito</option>
+                    <option value="Crédito">F4 - Crédito</option>
+                </select>
+
+                <div id="secao-troco" style="margin-top: 15px; background: #f9f9f9; padding: 10px; border-radius: 5px; border: 1px solid #ddd;">
+                    <label>Valor Recebido:</label><br>
+                    <input type="number" id="pdv-recebido" step="0.01" style="width: 80%; font-size: 22px; text-align: center; font-weight: bold;" placeholder="0,00" oninput="calcularTroco()">
+                    <h3 style="margin-top: 10px; color: var(--danger); margin-bottom: 0;">Troco: R$ <span id="pdv-troco">0,00</span></h3>
+                </div>
+
+                <button class="btn btn-success" style="width: 100%; height: 60px; margin-top: 20px;" onclick="finalizarVenda()">FINALIZAR [F5]</button>
+                <button class="btn btn-danger" style="width: 100%; margin-top: 10px;" onclick="limparPdv()">LIMPAR TUDO</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="estoque" class="tab-content">
+        <div class="card">
+            <h2 id="titulo-form">Novo Produto</h2>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px;">
+                <input type="text" id="est-codigo" placeholder="Código">
+                <input type="text" id="est-nome" placeholder="Nome">
+                <input type="text" id="est-categoria" placeholder="Categoria">
+                <input type="number" id="est-custo" step="0.01" placeholder="Custo">
+                <input type="number" id="est-venda" step="0.01" placeholder="Venda">
+                <input type="number" id="est-qtd" placeholder="Qtd">
+                <button class="btn btn-success" onclick="salvarEstoque()">Salvar</button>
+                <button id="btn-cancelar" class="btn btn-danger" style="display:none" onclick="cancelarEdicao()">Cancelar</button>
+            </div>
+        </div>
+        <div class="card">
+            <table>
+                <thead><tr><th>Código</th><th>Produto</th><th>Categoria</th><th>Venda</th><th>Estoque</th><th>Ações</th></tr></thead>
+                <tbody id="tabela-inventario"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="dashboard" class="tab-content">
+        <div class="card">
+            <h3>Filtros de Relatório</h3>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                <input type="date" id="data-inicio"> até <input type="date" id="data-fim">
+                <select id="dash-filtro-produto"><option value="todos">Todos os Produtos</option></select>
+                <select id="dash-filtro-pagamento">
+                    <option value="todos">Todas as Formas</option>
+                    <option value="Dinheiro">Dinheiro</option>
+                    <option value="Pix">Pix</option>
+                    <option value="Débito">Débito</option>
+                    <option value="Crédito">Crédito</option>
+                </select>
+                <button class="btn btn-warning" onclick="carregarDash()">Filtrar Agora</button>
+            </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px;">
+            <div class="card"><h4>Faturamento</h4><h2 id="dash-fatur">R$ 0,00</h2></div>
+            <div class="card"><h4>Vendas Hoje</h4><h2 id="dash-hoje">0</h2></div>
+            <div class="card"><h4>Estoque Baixo</h4><ul id="dash-alertas"></ul></div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <div class="card"><canvas id="chartProdutos"></canvas></div>
+            <div class="card"><canvas id="chartFinanceiro"></canvas></div>
+        </div>
+    </div>
+
+    <div id="config" class="tab-content">
+        <div class="card" style="max-width: 450px; margin: 0 auto 20px auto;">
+            <h2>Minha Conta</h2>
+            <p>Alterar minha senha atual:</p>
+            <input type="password" id="novaSenhaInput" style="width: 90%;" placeholder="Nova senha">
+            <button class="btn btn-success" style="width: 100%; margin-top: 10px;" onclick="alterarSenha()">SALVAR MINHA SENHA</button>
+        </div>
+
+        <div id="painel-admin" class="card" style="max-width: 450px; margin: 0 auto; display: none; border: 2px solid var(--accent);">
+            <h2 style="color: var(--accent)">🛠️ Gerenciamento de Licenças</h2>
+            <p>Usuário atual para editar:</p>
+            <select id="admin-selecionar-usuario" style="width: 100%; margin-bottom: 10px;" onchange="preencherDadosAdmin(this.value)">
+                <option value="">Selecione um usuário...</option>
+            </select>
+            
+            <label>Alterar Nome de Usuário (Login):</label>
+            <input type="text" id="admin-novo-nome" style="width: 90%; margin-bottom: 10px;" placeholder="Nome atual">
+
+            <label>Nova Senha:</label>
+            <input type="text" id="admin-nova-senha" style="width: 90%; margin-bottom: 10px;" placeholder="Senha atual">
+            
+            <label>Nova Data de Vencimento:</label>
+            <input type="date" id="admin-vencimento" style="width: 90%;">
+            
+            <button class="btn btn-warning" style="width: 100%; margin-top: 15px;" onclick="salvarAlteracoesAdmin()">
+                ATUALIZAR DADOS
+            </button>
+        </div>
+    </div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
+    import { getFirestore, collection, addDoc, setDoc, getDocs, updateDoc, deleteDoc, doc, query, where, orderBy, increment, getDoc } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyD7HIgiL4WjqBO6PMUizdyqHcCHikGH8QA",
+        authDomain: "sistemaminimercado-fc4a5.firebaseapp.com",
+        projectId: "sistemaminimercado-fc4a5",
+        storageBucket: "sistemaminimercado-fc4a5.firebasestorage.app",
+        messagingSenderId: "543846706936",
+        appId: "1:543846706936:web:c8498b58d390108a3a150d",
+        measurementId: "G-3CRCHVSWP9"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    let carrinho = [];
+    let editandoId = null;
+
+    window.sair = function() { sessionStorage.clear(); window.location.href = 'login.html'; }
+
+    window.openTab = function(tabId) {
+        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+        document.getElementById(tabId).classList.add('active');
+        if (tabId === 'config' && sessionStorage.getItem('nivelUsuario') === 'admin') {
+            document.getElementById('painel-admin').style.display = 'block';
+            carregarUsuariosAdmin();
+        }
+        if(tabId === 'vendas') { setTimeout(() => { document.getElementById('pdv-busca').focus(); }, 100); }
+        if(tabId === 'estoque') carregarInventario();
+    }
+
+    document.getElementById('pdv-busca').addEventListener('keypress', async (e) => {
+        if(e.key === 'Enter') {
+            const cod = e.target.value.trim();
+            if(!cod) return;
+            const q = query(collection(db, "produtos"), where("codigo", "==", cod));
+            const snap = await getDocs(q);
+            if(!snap.empty) {
+                const p = { id: snap.docs[0].id, ...snap.docs[0].data() };
+                carrinho.push({ ...p, id_carrinho: Date.now() + Math.random() }); 
+                atualizarPdv(); 
+            }
+            e.target.value = '';
+        }
+    });
+
+    window.atualizarPdv = function() {
+        let t = 0;
+        document.getElementById('pdv-lista').innerHTML = carrinho.map(i => { 
+            const preco = parseFloat(i.preco_venda) || 0;
+            t += preco; 
+            return `<tr><td>${i.nome}</td><td>1</td><td>R$ ${preco.toFixed(2).replace('.',',')}</td><td>R$ ${preco.toFixed(2).replace('.',',')}</td>
+            <td><button class="btn btn-danger btn-sm" onclick="removerItemPdv(${i.id_carrinho})">🗑️</button></td></tr>` 
+        }).join('');
+        document.getElementById('pdv-total').innerText = t.toFixed(2).replace('.', ',');
+    }
+
+    window.removerItemPdv = function(idCarrinho) {
+        carrinho = carrinho.filter(i => i.id_carrinho !== idCarrinho);
+        atualizarPdv();
+    }
+
+    window.limparPdv = function() {
+        carrinho = [];
+        atualizarPdv();
+        document.getElementById('pdv-recebido').value = '';
+        document.getElementById('pdv-troco').innerText = '0,00';
+    }
+
+    window.imprimirCupom = function(dadosVenda) {
+        const divCupom = document.getElementById('cupom-impressao');
+        let itensTxt = '';
+        
+        dadosVenda.itens.forEach(i => {
+            const nome = i.nome.substring(0, 20).padEnd(20);
+            const preco = parseFloat(i.preco).toFixed(2).padStart(10);
+            itensTxt += `${nome}${preco}\n`;
+        });
+
+        let rodapeFinanceiro = '';
+        if(dadosVenda.metodo === 'Dinheiro') {
+            rodapeFinanceiro = `RECEBIDO: ${dadosVenda.recebido.toFixed(2).padStart(22)}\n` +
+                               `TROCO:    ${dadosVenda.troco.toFixed(2).padStart(22)}\n`;
+        }
+
+        divCupom.innerHTML = 
+            `--------------------------------\n` +
+            `          MINI MERCADO          \n` +
+            `--------------------------------\n` +
+            `Data: ${new Date().toLocaleString()}\n` +
+            `--------------------------------\n` +
+            `ITEM                PRECO (R$)\n` +
+            `--------------------------------\n` +
+            `${itensTxt}` +
+            `--------------------------------\n` +
+            `TOTAL:    ${dadosVenda.total.toFixed(2).padStart(22)}\n` +
+            `METODO:   ${dadosVenda.metodo.padStart(22)}\n` +
+            `${rodapeFinanceiro}` +
+            `--------------------------------\n` +
+            `     OBRIGADO E VOLTE SEMPRE    \n` +
+            `--------------------------------\n\n\n`;
+        
+        window.print();
+        divCupom.innerHTML = '';
+    }
+
+    window.finalizarVenda = async function() {
+        if(!carrinho.length) return;
+        const total = parseFloat(document.getElementById('pdv-total').innerText.replace(',', '.'));
+        const metodo = document.getElementById('pdv-pagamento').value;
+        const recebido = parseFloat(document.getElementById('pdv-recebido').value) || total;
+        const troco = recebido - total;
+
+        const dadosVenda = {
+            itens: carrinho.map(i => ({id: i.id, nome: i.nome, preco: i.preco_venda})),
+            total: total,
+            metodo: metodo,
+            recebido: recebido,
+            troco: troco,
+            data: new Date().toISOString()
+        };
+
+        try {
+            await addDoc(collection(db, "vendas"), dadosVenda);
+            for(const item of carrinho) {
+                await updateDoc(doc(db, "produtos", item.id), { estoque: increment(-1) });
+            }
+            
+            imprimirCupom(dadosVenda);
+            limparPdv();
+        } catch (e) { alert("Erro: " + e.message); }
+    }
+
+    window.verificarDinheiro = function() {
+        const secao = document.getElementById('secao-troco');
+        secao.style.display = document.getElementById('pdv-pagamento').value === 'Dinheiro' ? 'block' : 'none';
+    }
+
+    window.calcularTroco = function() {
+        const total = parseFloat(document.getElementById('pdv-total').innerText.replace(',', '.'));
+        const recebido = parseFloat(document.getElementById('pdv-recebido').value) || 0;
+        const troco = recebido - total;
+        document.getElementById('pdv-troco').innerText = troco > 0 ? troco.toFixed(2).replace('.',',') : "0,00";
+    }
+
+    window.carregarInventario = async function() {
+        const snap = await getDocs(collection(db, "produtos"));
+        let html = '';
+        snap.forEach(d => {
+            const p = d.data();
+            html += `<tr><td>${p.codigo}</td><td>${p.nome}</td><td>${p.categoria || '-'}</td><td>R$ ${parseFloat(p.preco_venda).toFixed(2).replace('.',',')}</td><td>${p.estoque}</td>
+            <td>
+                <button class='btn btn-warning btn-sm' onclick='editar("${d.id}", ${JSON.stringify(p)})'>✏️</button>
+                <button class='btn btn-danger btn-sm' onclick='excluirProduto("${d.id}")'>🗑️</button>
+            </td></tr>`;
+        });
+        document.querySelector('#tabela-inventario').innerHTML = html;
+    }
+
+    window.excluirProduto = async function(id) {
+        if(confirm("Deseja excluir este produto?")) {
+            await deleteDoc(doc(db, "produtos", id));
+            carregarInventario();
+        }
+    }
+
+    window.editar = function(id, p) {
+        editandoId = id;
+        document.getElementById('est-codigo').value = p.codigo;
+        document.getElementById('est-nome').value = p.nome;
+        document.getElementById('est-categoria').value = p.categoria || "";
+        document.getElementById('est-custo').value = p.preco_custo || 0;
+        document.getElementById('est-venda').value = p.preco_venda;
+        document.getElementById('est-qtd').value = p.estoque;
+        document.getElementById('titulo-form').innerText = "Editar Produto";
+        document.getElementById('btn-cancelar').style.display = "inline";
+    }
+
+    window.cancelarEdicao = function() {
+        editandoId = null;
+        document.getElementById('titulo-form').innerText = "Novo Produto";
+        document.querySelectorAll('#estoque input').forEach(i => i.value = "");
+        document.getElementById('btn-cancelar').style.display = "none";
+    }
+
+    window.salvarEstoque = async function() {
+        const cod = document.getElementById('est-codigo').value.trim();
+        if(!cod) return alert("Código é obrigatório!");
+
+        const p = { 
+            codigo: cod, 
+            nome: document.getElementById('est-nome').value,
+            categoria: document.getElementById('est-categoria').value,
+            preco_custo: parseFloat(document.getElementById('est-custo').value) || 0,
+            preco_venda: parseFloat(document.getElementById('est-venda').value) || 0, 
+            estoque: parseInt(document.getElementById('est-qtd').value) || 0 
+        };
+
+        try {
+            // Salva usando o código como ID do documento
+            await setDoc(doc(db, "produtos", cod), p);
+            cancelarEdicao();
+            carregarInventario();
+        } catch (e) { alert("Erro ao salvar: " + e.message); }
+    }
+
+    window.carregarUsuariosAdmin = async function() {
+        const snap = await getDocs(collection(db, "usuarios"));
+        const select = document.getElementById('admin-selecionar-usuario');
+        select.innerHTML = '<option value="">Selecione um usuário...</option>';
+        snap.forEach(d => {
+            select.innerHTML += `<option value="${d.id}">${d.data().usuario}</option>`;
+        });
+    }
+
+    window.preencherDadosAdmin = async function(id) {
+        if(!id) return;
+        const docSnap = await getDoc(doc(db, "usuarios", id));
+        if (docSnap.exists()) {
+            const data = docSnap.data();
+            document.getElementById('admin-novo-nome').value = data.usuario || "";
+            document.getElementById('admin-nova-senha').value = data.senha || "";
+            document.getElementById('admin-vencimento').value = data.vencimento || "";
+        }
+    }
+
+    window.salvarAlteracoesAdmin = async function() {
+        const idAlvo = document.getElementById('admin-selecionar-usuario').value;
+        if(!idAlvo) return alert("Selecione um usuário!");
+        await updateDoc(doc(db, "usuarios", idAlvo), {
+            usuario: document.getElementById('admin-novo-nome').value,
+            senha: document.getElementById('admin-nova-senha').value,
+            vencimento: document.getElementById('admin-vencimento').value
+        });
+        alert("Licença Atualizada!");
+        carregarUsuariosAdmin();
+    }
+
+    const nome = sessionStorage.getItem('nomeUsuario') || 'Usuário';
+    document.getElementById('info-usuario').innerText = nome;
+    window.verificarDinheiro();
+
+</script>
+
+<script>
+    window.addEventListener('keydown', (e) => {
+        if (document.getElementById('vendas').classList.contains('active')) {
+            if (e.key === 'F1') { e.preventDefault(); document.getElementById('pdv-pagamento').value = 'Dinheiro'; if(window.verificarDinheiro) verificarDinheiro(); }
+            if (e.key === 'F2') { e.preventDefault(); document.getElementById('pdv-pagamento').value = 'Pix'; if(window.verificarDinheiro) verificarDinheiro(); }
+            if (e.key === 'F3') { e.preventDefault(); document.getElementById('pdv-pagamento').value = 'Débito'; if(window.verificarDinheiro) verificarDinheiro(); }
+            if (e.key === 'F4') { e.preventDefault(); document.getElementById('pdv-pagamento').value = 'Crédito'; if(window.verificarDinheiro) verificarDinheiro(); }
+            if (e.key === 'F5') { e.preventDefault(); if(window.finalizarVenda) finalizarVenda(); }
+        }
+    });
+</script>
+</body>
+</html>
