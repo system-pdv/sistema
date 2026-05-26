@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portaria - Morador</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <button class="btn-logout" id="btn-logout">Sair</button>
+
+        <div class="app-header" style="margin-top: 20px;">
+            <h2 id="txt-boas-vindas">Olá, Morador</h2>
+            <p id="txt-info-ap">Apartamento --</p>
+        </div>
+
+        <div class="lock-container">
+            <button class="btn-unlock" id="btn-unlock">🔓</button>
+            <p class="lock-status" id="lock-status">Toque para destravar a caixa</p>
+        </div>
+
+        <div id="feedback-msg" class="status-msg hide"></div>
+    </div>
+
+    <script type="module" src="js/morador.js"></script>
+</body>
+</html>

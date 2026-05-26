@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portaria - Admin</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <button class="btn-logout" id="btn-logout">Sair</button>
+
+        <div class="app-header" style="margin-top: 20px;">
+            <h2>Painel do Administrador</h2>
+            <p>Cadastrar novos moradores no sistema</p>
+        </div>
+
+        <form id="cadastro-form">
+            <div class="input-group">
+                <label for="cad-nome">Nome Completo</label>
+                <input type="text" id="cad-nome" placeholder="Ex: João Silva" required>
+            </div>
+
+            <div class="input-group">
+                <label for="cad-tel">Telefone</label>
+                <input type="tel" id="cad-tel" placeholder="Ex: 11999999999" required>
+            </div>
+
+            <div class="input-group">
+                <label for="cad-ap">Número do Apartamento</label>
+                <input type="text" id="cad-ap" placeholder="Ex: 102 Bloco B" required>
+            </div>
+
+            <div class="input-group">
+                <label for="cad-email">E-mail de Acesso</label>
+                <input type="email" id="cad-email" placeholder="morador@email.com" required>
+            </div>
+
+            <div class="input-group">
+                <label for="cad-regra">Tipo de Acesso</label>
+                <select id="cad-regra">
+                    <option value="morador" selected>Morador</option>
+                    <option value="admin">Administrador</option>
+                </select>
+            </div>
+
+            <button type="submit" class="btn">Salvar Cadastro</button>
+        </form>
+
+        <div id="feedback-msg" class="status-msg hide"></div>
+
+        <section class="admin-section" style="margin-top: 30px;">
+            <h2>Apartamentos e Moradores</h2>
+            <div id="lista-apartamentos">
+                <p>Carregando moradores...</p>
+            </div>
+        </section>
+    </div>
+
+    <script type="module" src="js/admin.js"></script>
+</body>
+</html>

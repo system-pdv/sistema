@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>In Lock - Login</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#4f46e5">
+</head>
+<body>
+    <div class="app-container">
+        <div class="app-header">
+            <h2 style="font-size: 28px; background: linear-gradient(135deg, #4f46e5, #06b6d4); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">In Lock</h2>
+            <p>Acesso à caixa de entregas</p>
+        </div>
+
+        <form id="login-form">
+            <div class="input-group">
+                <label for="email">E-mail</label>
+                <input type="email" id="email" placeholder="seuemail@email.com" required>
+            </div>
+
+            <div class="input-group">
+                <label for="password">Senha</label>
+                <input type="password" id="password" placeholder="••••••••" required>
+            </div>
+
+            <button type="submit" class="btn" id="btn-login">Entrar</button>
+            <a href="#" id="btn-esqueci-senha" style="display: block; text-align: center; margin-top: 15px; color: #64748b; font-size: 13px; text-decoration: none; font-weight: 500;">Esqueci minha senha</a>
+        </form>
+        
+        <div id="error-message" class="status-msg error hide"></div>
+    </div>
+
+    <script type="module" src="js/auth.js"></script>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js')
+                .then(() => console.log("Service Worker Registrado com Sucesso!"))
+                .catch(err => console.log("Erro ao registrar Service Worker:", err));
+        }
+    </script>
+</body>
+</html>

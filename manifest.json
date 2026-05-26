@@ -1,0 +1,17 @@
+{
+  "short_name": "In Lock",
+  "name": "In Lock - Portaria Inteligente",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3064/3064155.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/index.html",
+  "background_color": "#f8fafc",
+  "theme-color": "#4f46e5",
+  "display": "standalone",
+  "orientation": "portrait"
+}
