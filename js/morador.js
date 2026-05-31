@@ -116,7 +116,7 @@ if (btnUnlock) {
                 timestamp: Date.now() // Guarda o horário exato do clique
             });
 
-            showFeedback("🔓 Sinal enviado! Caixa destravada por 10 segundos.", "success");
+            showFeedback("🔓 Sinal enviado! Caixa destravada por 5 segundos.", "success");
             btnUnlock.innerText = "✅";
 
             // Espera 10 segundos (tempo do entregador abrir a caixa) e volta ao normal
@@ -126,7 +126,7 @@ if (btnUnlock) {
                 lockStatus.innerText = "Toque para destravar a caixa";
                 lockStatus.classList.remove("active");
                 hideFeedback();
-            }, 10000); // Alterado de 5000 para 10000ms (10 segundos)
+            }, 5000); // Alterado de 5000 para 10000ms (10 segundos)
 
         } catch (error) {
             console.error("Erro ao enviar comando:", error);
